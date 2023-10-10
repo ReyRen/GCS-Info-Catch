@@ -37,6 +37,5 @@ func main() {
 	}()
 	//Daemon system ready
 
-	docker_test()
-	//run_handler()
+	run_handler()
 }

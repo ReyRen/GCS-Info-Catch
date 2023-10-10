@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 )
 
+/*
 // Hello is rpc server method x.
 func (g *GCSInfoCatchService) getContainerInfo(request string, reply *string) error {
 	*reply = "hello:" + request
@@ -17,6 +18,7 @@ func (g *GCSInfoCatchService) GoodLuck(request string, reply *string) error {
 	*reply = "Good_luck:" + request
 	return nil
 }
+*/
 
 func run_handler() {
 	err := rpc.RegisterName(RPC_REGISTER_NAME, new(GCSInfoCatchService))
