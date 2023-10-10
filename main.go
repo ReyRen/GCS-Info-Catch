@@ -3,24 +3,7 @@ package main
 import (
 	"github.com/sevlyar/go-daemon"
 	"log"
-	"net"
-	"net/rpc"
 )
-
-// HelloService is rpc server obj
-type GCSInfoCatchService struct{}
-
-// Hello is rpc server method x.
-func (g *GCSInfoCatchService) Hello(request string, reply *string) error {
-	*reply = "hello:" + request
-	return nil
-}
-
-// GoodLuck is rpc server method x
-func (g *GCSInfoCatchService) GoodLuck(request string, reply *string) error {
-	*reply = "Good_luck:" + request
-	return nil
-}
 
 func main() {
 	//Setup daemon system
@@ -54,18 +37,6 @@ func main() {
 	}()
 	//Daemon system ready
 
-	rpc.RegisterName("gcs-info-catch-service", new(GCSInfoCatchService))
-	listener, err := net.Listen("tcp", "172.18.127.62:40062")
-	if err != nil {
-		log.Fatal("ListenTCP error:", err)
-	}
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal("Accept error:", err)
-		}
-		go func() {
-			rpc.ServeConn(conn)
-		}()
-	}
+	docker_test()
+	//run_handler()
 }
