@@ -7,10 +7,33 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"io"
+	"log"
 	"os"
 )
 
-// docker_system
+// request: "23+123+172.18.127.62+imageName+025"
+//           uid+tid+ip+镜像名+gpu序号
+
+// TODO 使用grpc
+
+func (g *GCSInfoCatchService) DockerContainerImagePull(request string, reply *string) error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		*reply = "create docker client get error:" + request
+		log.Printf("NewClientWithOpts Error:", err.Error())
+	}
+	defer cli.Close()
+
+	out, err := cli.ImagePull(ctx, request, types.ImagePullOptions{})
+	if err != nil {
+		*reply = "docker image pull get error:" + request
+		log.Printf("NewClientWithOpts Error:", err.Error())
+	}
+	defer out.Close()
+	return nil
+}
+
 func (g *GCSInfoCatchService) DockerContainerRun(request string, reply *string) error {
 	ctx := context.Background()
 

@@ -1,0 +1,11 @@
+2023/10/11 19:54:48 - - - - - - -[GCS-Info-Catch] started - - - - - - -
+2023/10/11 19:54:48 Greeting: Hello world
+2023/10/11 19:54:48 - - - - - - -[GCS-Info-Catch] exited - - - - - - -
+2023/10/11 19:56:25 - - - - - - -[GCS-Info-Catch] started - - - - - - -
+2023/10/11 19:56:25 Greeting: 
+2023/10/11 19:56:25 - - - - - - -[GCS-Info-Catch] exited - - - - - - -
+2023/10/11 20:39:04 - - - - - - -[GCS-Info-Catch] started - - - - - - -
+2023/10/11 20:39:04 Recv data:hello130
+2023/10/11 20:39:04 Recv data:hello130
+2023/10/11 20:39:04 server closed
+2023/10/11 20:39:04 - - - - - - -[GCS-Info-Catch] exited - - - - - - -

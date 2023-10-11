@@ -37,5 +37,7 @@ func main() {
 	}()
 	//Daemon system ready
 
-	run_handler()
+	//run_handler()
+	//run_handler_server()
+	run_handler_client()
 }
