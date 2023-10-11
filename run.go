@@ -9,74 +9,21 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/rpc"
-	"strconv"
 	"time"
 )
 
-/*
-// Hello is rpc server method x.
-func (g *GCSInfoCatchService) getContainerInfo(request string, reply *string) error {
-	*reply = "hello:" + request
-	return nil
-}
-
-// GoodLuck is rpc server method x
-func (g *GCSInfoCatchService) GoodLuck(request string, reply *string) error {
-	*reply = "Good_luck:" + request
-	return nil
-}
-*/
-
-func run_handler() {
-	err := rpc.RegisterName(RPC_REGISTER_NAME, new(GCSInfoCatchService))
-	if err != nil {
-		log.Fatal("rpc.RegisterName error:", err.Error())
-	}
-	log.Println("rpc.RegisterName [gcs-info-catch-service] done")
-	listener, err := net.Listen("tcp", RPC_ADDDR_AND_PORT)
-	if err != nil {
-		log.Fatal("ListenTCP error:", err.Error())
-	}
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal("Accept error:", err.Error())
-		}
-		go func() {
-			rpc.ServeConn(conn)
-		}()
-	}
-}
-
-// 定义server，用来实现proto文件，里面实现的Greeter服务里面的接口
-type server struct{}
-
-func (s *server) SayHello(req *pb.HelloRequest, stream pb.Greeter_SayHelloServer) error {
-	log.Printf("Recved %v %v\n", req.GetName(), req.GetAge())
-
-	for i := 0; i < 2; i++ {
-		// 通过 send 方法不断推送数据
-		err := stream.Send(&pb.HelloReply{Message: "hello1" + strconv.Itoa(int(req.GetAge()))})
-		if err != nil {
-			log.Fatalf("Send error:%v", err)
-			return err
-		}
-	}
-	return nil
-}
 func run_handler_server() {
 
-	lis, err := net.Listen("tcp", "172.18.127.62:50051")
+	lis, err := net.Listen("tcp", RPC_ADDDR_AND_PORT)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Printf("Failed to listen: %v\n", err.Error())
 	}
 
 	// 实例化grpc服务端
 	s := grpc.NewServer()
 
 	// 注册Greeter服务
-	pb.RegisterGreeterServer(s, &server{})
+	pb.RegisterGcsInfoCatchServiceServer(s, &GCSInfoCatchServer{})
 
 	// 往grpc服务端注册反射服务
 	reflection.Register(s)
@@ -90,7 +37,7 @@ func run_handler_server() {
 
 func run_handler_client() {
 	// 连接grpc服务器
-	conn, err := grpc.Dial("172.18.127.62:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(RPC_ADDDR_AND_PORT, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Printf("did not connect: %v\n", err)
 	}

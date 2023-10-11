@@ -1,6 +1,7 @@
 package main
 
 import (
+	pb "GCS-Info-Catch/proto"
 	"context"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -11,41 +12,60 @@ import (
 	"os"
 )
 
-// request: "23+123+172.18.127.62+imageName+025"
-//           uid+tid+ip+镜像名+gpu序号
-
-// TODO 使用grpc
-
-func (g *GCSInfoCatchService) DockerContainerImagePull(request string, reply *string) error {
+func (g *GCSInfoCatchServer) DockerContainerImagePull(req *pb.ImagePullRequestMsg, stream pb.GcsInfoCatchService_DockerContainerImagePullServer) error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		*reply = "create docker client get error:" + request
 		log.Printf("NewClientWithOpts Error:", err.Error())
 	}
 	defer cli.Close()
+	var out io.ReadCloser
+	// 创建一个缓冲区来保存数据
+	buf := make([]byte, 4096)
 
-	out, err := cli.ImagePull(ctx, request, types.ImagePullOptions{})
-	if err != nil {
-		*reply = "docker image pull get error:" + request
-		log.Printf("NewClientWithOpts Error:", err.Error())
+	for {
+		out, err = cli.ImagePull(ctx, req.GetImageName(), types.ImagePullOptions{})
+		if err != nil {
+			log.Printf("cli.ImagePull Error:", err.Error())
+			err = stream.Send(&pb.ImagePullRespondMsg{ImageResp: "image pull get error " + err.Error()})
+			if err != nil {
+				log.Printf("Stream send error:%v", err.Error())
+				return err
+			}
+			return err
+		}
+		n, err := out.Read(buf)
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("out.Read error occurred: %v", err.Error())
+				return err
+			}
+			// EOF
+			break
+		}
+		err = stream.Send(&pb.ImagePullRespondMsg{ImageResp: string(buf[:n])})
+		if err != nil {
+			log.Printf("Stream send error:%v", err)
+			return err
+		}
 	}
 	defer out.Close()
+
 	return nil
 }
 
-func (g *GCSInfoCatchService) DockerContainerRun(request string, reply *string) error {
+func (g *GCSInfoCatchServer) DockerContainerStart(req *pb.StartRequestMsg, stream pb.GcsInfoCatchService_DockerContainerStartServer) error {
 	ctx := context.Background()
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		*reply = "client.NewClientWithOpts get Error:" + request
+		//*reply = "client.NewClientWithOpts get Error:" + request
 		panic(err)
 	}
 
 	defer cli.Close()
 
-	imageName := request
+	imageName := "request"
 	out, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
 	if err != nil {
 		panic(err)
@@ -162,11 +182,11 @@ func (g *GCSInfoCatchService) DockerContainerRun(request string, reply *string) 
 	return nil
 }
 
-func (g *GCSInfoCatchService) DockerContainerDelete(request string, reply *string) error {
+func (g *GCSInfoCatchServer) DockerContainerDelete(req *pb.DeleteRequestMsg, stream pb.GcsInfoCatchService_DockerContainerDeleteServer) error {
 	return nil
 }
 
-func (g *GCSInfoCatchService) DockerContainerStatus(request string, reply *string) error {
+func (g *GCSInfoCatchServer) DockerContainerStatus(req *pb.StatusRequestMsg, stream pb.GcsInfoCatchService_DockerContainerStatusServer) error {
 	/*swarm, err := cli.SwarmInspect(ctx)
 	//slog.Debug("swarm information", "SWARM_JoinTokens", swarm.JoinTokens.Manager)
 	slog.Debug("swarm information", "SWARM_JoinTokens", swarm.ClusterInfo.)
@@ -183,7 +203,7 @@ func (g *GCSInfoCatchService) DockerContainerStatus(request string, reply *strin
 	return nil
 }
 
-func (g *GCSInfoCatchService) DockerContainerLogs(request string, reply *string) error {
+func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream pb.GcsInfoCatchService_DockerContainerLogsServer) error {
 	/*cli.ContainerLogs(ctx, "name", types.ContainerLogsOptions{
 		ShowStdout: false,
 		ShowStderr: false,
