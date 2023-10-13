@@ -9,11 +9,13 @@ import (
 
 // return value 0 is success
 func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, stream pb.GcsInfoCatchServiceDocker_NvmlUtilizationRateServer) error {
+	log.Printf("Get GRPC requect, Type is %v\n", req.GetType())
 	ret := nvml.Init()
 	if ret != nvml.SUCCESS {
 		log.Printf("Unable to initialize NVML:%v\n", nvml.ErrorString(ret))
 		return errors.New(nvml.ErrorString(ret))
 	}
+	log.Println("nvml.Init() ok")
 	defer func() {
 		ret := nvml.Shutdown()
 		if ret != nvml.SUCCESS {
@@ -42,6 +44,7 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 		}
 		//GPU 序列加入
 		indexID = append(indexID, int32(i))
+		log.Printf("GPUIndex get %v\n", indexID)
 		//GPU 利用率加入
 		rate, ret := device.GetUtilizationRates()
 		if ret != nvml.SUCCESS {
@@ -52,6 +55,7 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 		}
 		utilizationRate = append(utilizationRate, rate.Gpu)
 		memRate = append(memRate, rate.Memory)
+		log.Printf("utilizationRate get %v memRate get %v\n", utilizationRate, memRate)
 		//GPU 温度加入
 		temp, ret := device.GetTemperature(nvml.TEMPERATURE_GPU)
 		if ret != nvml.SUCCESS {
@@ -60,6 +64,7 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 			continue
 		}
 		temperature = append(utilizationRate, temp)
+		log.Printf("temperature get %v\n", temperature)
 		//occupied情况
 		process, ret := device.GetComputeRunningProcesses()
 		if ret != nvml.SUCCESS {
@@ -70,6 +75,7 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 		if process != nil {
 			occupied = append(occupied, 1) // 1表示占用了
 		}
+		log.Printf("occupied get %v\n", occupied)
 	}
 
 	err := stream.Send(&pb.NvmlInfoRespondMsg{
@@ -83,5 +89,6 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 		log.Printf("Stream send error:%v", err)
 		return errors.New(nvml.ErrorString(nvml.ERROR_UNKNOWN))
 	}
+	log.Println("grpc stream send ok")
 	return nil
 }
