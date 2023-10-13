@@ -12,7 +12,7 @@ import (
 	"os"
 )
 
-func (g *GCSInfoCatchServer) DockerContainerImagePull(req *pb.ImagePullRequestMsg, stream pb.GcsInfoCatchService_DockerContainerImagePullServer) error {
+func (g *GCSInfoCatchServer) DockerContainerImagePull(req *pb.ImagePullRequestMsg, stream pb.GcsInfoCatchServiceDocker_DockerContainerImagePullServer) error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -54,7 +54,7 @@ func (g *GCSInfoCatchServer) DockerContainerImagePull(req *pb.ImagePullRequestMs
 	return nil
 }
 
-func (g *GCSInfoCatchServer) DockerContainerStart(req *pb.StartRequestMsg, stream pb.GcsInfoCatchService_DockerContainerStartServer) error {
+func (g *GCSInfoCatchServer) DockerContainerStart(req *pb.StartRequestMsg, stream pb.GcsInfoCatchServiceDocker_DockerContainerStartServer) error {
 	ctx := context.Background()
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -182,11 +182,11 @@ func (g *GCSInfoCatchServer) DockerContainerStart(req *pb.StartRequestMsg, strea
 	return nil
 }
 
-func (g *GCSInfoCatchServer) DockerContainerDelete(req *pb.DeleteRequestMsg, stream pb.GcsInfoCatchService_DockerContainerDeleteServer) error {
+func (g *GCSInfoCatchServer) DockerContainerDelete(req *pb.DeleteRequestMsg, stream pb.GcsInfoCatchServiceDocker_DockerContainerDeleteServer) error {
 	return nil
 }
 
-func (g *GCSInfoCatchServer) DockerContainerStatus(req *pb.StatusRequestMsg, stream pb.GcsInfoCatchService_DockerContainerStatusServer) error {
+func (g *GCSInfoCatchServer) DockerContainerStatus(req *pb.StatusRequestMsg, stream pb.GcsInfoCatchServiceDocker_DockerContainerStatusServer) error {
 	/*swarm, err := cli.SwarmInspect(ctx)
 	//slog.Debug("swarm information", "SWARM_JoinTokens", swarm.JoinTokens.Manager)
 	slog.Debug("swarm information", "SWARM_JoinTokens", swarm.ClusterInfo.)
@@ -203,7 +203,7 @@ func (g *GCSInfoCatchServer) DockerContainerStatus(req *pb.StatusRequestMsg, str
 	return nil
 }
 
-func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream pb.GcsInfoCatchService_DockerContainerLogsServer) error {
+func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream pb.GcsInfoCatchServiceDocker_DockerContainerLogsServer) error {
 	/*cli.ContainerLogs(ctx, "name", types.ContainerLogsOptions{
 		ShowStdout: false,
 		ShowStderr: false,

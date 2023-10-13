@@ -4,9 +4,9 @@ package proto;
 
 // define service
 /*
-  Using Server stream mod, because server is used to get docker and nvme info
+  Using Server stream mod, because server is used to get docker and nvml info
 */
-service GcsInfoCatchService {
+service GcsInfoCatchServiceDocker {
   // 定义docker操作方法
   rpc DockerContainerImagePull (ImagePullRequestMsg) returns (stream ImagePullRespondMsg) {}
   rpc DockerContainerDelete (DeleteRequestMsg) returns (stream DeleteRespondMsg) {}
@@ -14,9 +14,11 @@ service GcsInfoCatchService {
   rpc DockerContainerLogs (LogsRequestMsg) returns (stream LogsRespondMsg) {}
   rpc DockerContainerStart (StartRequestMsg) returns (stream startRespondMsg) {}
 
-  //TODO 定义 nvml 操作方法
+  // 定义nvml操作方法
+  rpc NvmlUtilizationRate (NvmlInfoReuqestMsg) returns (stream NvmlInfoRespondMsg) {}
 }
 
+/***************************Docker Message******************************/
 message ImagePullRequestMsg{
   string imageName = 1;
 
@@ -47,10 +49,24 @@ message LogsRespondMsg{
 }
 
 message StartRequestMsg {
-   string containerName = 1;
-   string gpuIdx = 2;
-   string imageName = 3;
+  string containerName = 1;
+  string gpuIdx = 2;
+  string imageName = 3;
 }
 message startRespondMsg {
   string startResp = 1;
 }
+/***************************Docker Message******************************/
+
+/***************************NVML Message******************************/
+message NvmlInfoReuqestMsg{
+  string type = 1;
+}
+message NvmlInfoRespondMsg{
+  repeated int32 indexID = 1;
+  repeated uint32 utilizationRate = 2;
+  repeated uint32 memRate = 3;
+  repeated uint32 temperature = 4;
+  repeated uint32 occupied = 5; //通过 runningprocess 有无来进行判断
+}
+/***************************NVML Message******************************/
