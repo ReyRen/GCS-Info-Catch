@@ -60,7 +60,7 @@ message startRespondMsg {
 
 /***************************NVML Message******************************/
 message NvmlInfoReuqestMsg{
-  string type = 1;
+  string indexID = 1;
 }
 message NvmlInfoRespondMsg{
   repeated int32 indexID = 1;

@@ -5,11 +5,12 @@ import (
 	"errors"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"log"
+	"strconv"
 )
 
 // return value 0 is success
 func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, stream pb.GcsInfoCatchServiceDocker_NvmlUtilizationRateServer) error {
-	log.Printf("Get GRPC requect, Type is %v\n", req.GetType())
+	log.Printf("Get GRPC request, indexId is %v\n", req.GetIndexID())
 	ret := nvml.Init()
 	if ret != nvml.SUCCESS {
 		log.Printf("Unable to initialize NVML:%v\n", nvml.ErrorString(ret))
@@ -23,11 +24,11 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 			return
 		}
 	}()
-	count, ret := nvml.DeviceGetCount()
+	/*count, ret := nvml.DeviceGetCount()
 	if ret != nvml.SUCCESS {
 		log.Printf("Unable to get device count:%v\n", nvml.ErrorString(ret))
 		return errors.New(nvml.ErrorString(ret))
-	}
+	}*/
 
 	var indexID []int32
 	var utilizationRate []uint32
@@ -35,16 +36,19 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 	var temperature []uint32
 	var occupied []uint32
 
-	for i := 0; i < count; i++ {
-		device, ret := nvml.DeviceGetHandleByIndex(i)
+	//handle "," index
+	index_arr := stringTrimHandler(req.GetIndexID())
+
+	for _, gpuIndex := range index_arr {
+		gpuIndexInt, _ := strconv.Atoi(gpuIndex)
+		device, ret := nvml.DeviceGetHandleByIndex(gpuIndexInt)
 		if ret != nvml.SUCCESS {
 			log.Printf("Unable to get device at index:%v\n", nvml.ErrorString(ret))
 			indexID = append(indexID, 99999) // 99999表示有异常
 			continue
 		}
 		//GPU 序列加入
-		indexID = append(indexID, int32(i))
-		log.Printf("GPUIndex get %v\n", indexID)
+		indexID = append(indexID, int32(gpuIndexInt))
 		//GPU 利用率加入
 		rate, ret := device.GetUtilizationRates()
 		if ret != nvml.SUCCESS {
@@ -55,16 +59,14 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 		}
 		utilizationRate = append(utilizationRate, rate.Gpu)
 		memRate = append(memRate, rate.Memory)
-		log.Printf("utilizationRate get %v memRate get %v\n", utilizationRate, memRate)
 		//GPU 温度加入
-		temp, ret := device.GetTemperature(nvml.TEMPERATURE_GPU)
+		temp, ret := device.GetTemperature(nvml.TemperatureSensors(0))
 		if ret != nvml.SUCCESS {
 			log.Printf("Unable to get device GetTemperature at index:%v\n", nvml.ErrorString(ret))
 			temperature = append(utilizationRate, 99999)
 			continue
 		}
 		temperature = append(utilizationRate, temp)
-		log.Printf("temperature get %v\n", temperature)
 		//occupied情况
 		process, ret := device.GetComputeRunningProcesses()
 		if ret != nvml.SUCCESS {
@@ -75,9 +77,11 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 		if process != nil {
 			occupied = append(occupied, 1) // 1表示占用了
 		}
-		log.Printf("occupied get %v\n", occupied)
 	}
-
+	log.Printf("GPUIndex get %v\n", indexID)
+	log.Printf("utilizationRate get %v memRate get %v\n", utilizationRate, memRate)
+	//log.Printf("temperature get %v\n", temperature)
+	log.Printf("occupied get %v\n", occupied)
 	err := stream.Send(&pb.NvmlInfoRespondMsg{
 		IndexID:         indexID,
 		UtilizationRate: utilizationRate,
