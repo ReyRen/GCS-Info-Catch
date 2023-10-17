@@ -25,7 +25,6 @@ type GcsInfoCatchServiceDockerClient interface {
 	// 定义docker操作方法
 	// 包括了image pull以及container create
 	DockerContainerRun(ctx context.Context, in *ContainerRunRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerRunClient, error)
-	// rpc DockerContainerImagePull (ImagePullRequestMsg) returns (stream ImagePullRespondMsg) {}
 	DockerContainerDelete(ctx context.Context, in *DeleteRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerDeleteClient, error)
 	DockerContainerStatus(ctx context.Context, in *StatusRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerStatusClient, error)
 	DockerContainerLogs(ctx context.Context, in *LogsRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerLogsClient, error)
@@ -208,7 +207,6 @@ type GcsInfoCatchServiceDockerServer interface {
 	// 定义docker操作方法
 	// 包括了image pull以及container create
 	DockerContainerRun(*ContainerRunRequestMsg, GcsInfoCatchServiceDocker_DockerContainerRunServer) error
-	// rpc DockerContainerImagePull (ImagePullRequestMsg) returns (stream ImagePullRespondMsg) {}
 	DockerContainerDelete(*DeleteRequestMsg, GcsInfoCatchServiceDocker_DockerContainerDeleteServer) error
 	DockerContainerStatus(*StatusRequestMsg, GcsInfoCatchServiceDocker_DockerContainerStatusServer) error
 	DockerContainerLogs(*LogsRequestMsg, GcsInfoCatchServiceDocker_DockerContainerLogsServer) error

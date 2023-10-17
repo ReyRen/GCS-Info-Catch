@@ -156,7 +156,8 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 				return err
 			}
 			if status == "running" {
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_RUNNING"})
+				ci, err := cli.ContainerInspect(ctx, resp.ID)
+				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_RUNNING", ContainerIp: ci.NetworkSettings.IPAddress})
 				if err != nil {
 					log.Printf("Stream send error:%v", err)
 				}
@@ -250,20 +251,14 @@ func (g *GCSInfoCatchServer) DockerContainerStatus(req *pb.StatusRequestMsg, str
 
 	inspect, err := cli.ContainerInspect(ctx, req.GetContainerName())
 	if err != nil {
+		log.Printf("ContainerInspect get error:%v\n", err.Error())
+		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_REMOVED"})
 		return err
 	}
 	status := inspect.State.Status
 	if err != nil {
 		log.Printf("containerStatus get error:%v\n", err.Error())
 		return err
-	}
-	if status == "" {
-		log.Printf("containerID not found\n")
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_REMOVED"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
-		}
 	}
 	if status == "running" {
 		log.Printf("container running:%v\n", req.GetContainerName())
