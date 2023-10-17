@@ -8,25 +8,28 @@ package proto;
 */
 service GcsInfoCatchServiceDocker {
   // 定义docker操作方法
-  rpc DockerContainerImagePull (ImagePullRequestMsg) returns (stream ImagePullRespondMsg) {}
+  //包括了image pull以及container create
+  rpc DockerContainerRun(ContainerRunRequestMsg) returns (stream ContainerRunRespondMsg) {}
+ // rpc DockerContainerImagePull (ImagePullRequestMsg) returns (stream ImagePullRespondMsg) {}
   rpc DockerContainerDelete (DeleteRequestMsg) returns (stream DeleteRespondMsg) {}
   rpc DockerContainerStatus (StatusRequestMsg) returns (stream StatusRespondMsg) {}
   rpc DockerContainerLogs (LogsRequestMsg) returns (stream LogsRespondMsg) {}
-  rpc DockerContainerStart (StartRequestMsg) returns (stream startRespondMsg) {}
+  //rpc DockerContainerStart (StartRequestMsg) returns (stream startRespondMsg) {}
 
   // 定义nvml操作方法
   rpc NvmlUtilizationRate (NvmlInfoReuqestMsg) returns (stream NvmlInfoRespondMsg) {}
 }
 
 /***************************Docker Message******************************/
-message ImagePullRequestMsg{
+message ContainerRunRequestMsg {
   string imageName = 1;
-
-}
-message ImagePullRespondMsg{
-  string imageResp = 1;
+  string containerName = 2;
+  string gpuIdx = 3;
 }
 
+message ContainerRunRespondMsg {
+  string runResp = 1;
+}
 message DeleteRequestMsg{
   string containName = 1;
 }
@@ -46,15 +49,6 @@ message LogsRequestMsg{
 }
 message LogsRespondMsg{
   string logsResp = 1;
-}
-
-message StartRequestMsg {
-  string containerName = 1;
-  string gpuIdx = 2;
-  string imageName = 3;
-}
-message startRespondMsg {
-  string startResp = 1;
 }
 /***************************Docker Message******************************/
 

@@ -23,11 +23,12 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GcsInfoCatchServiceDockerClient interface {
 	// 定义docker操作方法
-	DockerContainerImagePull(ctx context.Context, in *ImagePullRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerImagePullClient, error)
+	// 包括了image pull以及container create
+	DockerContainerRun(ctx context.Context, in *ContainerRunRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerRunClient, error)
+	// rpc DockerContainerImagePull (ImagePullRequestMsg) returns (stream ImagePullRespondMsg) {}
 	DockerContainerDelete(ctx context.Context, in *DeleteRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerDeleteClient, error)
 	DockerContainerStatus(ctx context.Context, in *StatusRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerStatusClient, error)
 	DockerContainerLogs(ctx context.Context, in *LogsRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerLogsClient, error)
-	DockerContainerStart(ctx context.Context, in *StartRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerStartClient, error)
 	// 定义nvml操作方法
 	NvmlUtilizationRate(ctx context.Context, in *NvmlInfoReuqestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_NvmlUtilizationRateClient, error)
 }
@@ -40,12 +41,12 @@ func NewGcsInfoCatchServiceDockerClient(cc grpc.ClientConnInterface) GcsInfoCatc
 	return &gcsInfoCatchServiceDockerClient{cc}
 }
 
-func (c *gcsInfoCatchServiceDockerClient) DockerContainerImagePull(ctx context.Context, in *ImagePullRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerImagePullClient, error) {
-	stream, err := c.cc.NewStream(ctx, &GcsInfoCatchServiceDocker_ServiceDesc.Streams[0], "/proto.GcsInfoCatchServiceDocker/DockerContainerImagePull", opts...)
+func (c *gcsInfoCatchServiceDockerClient) DockerContainerRun(ctx context.Context, in *ContainerRunRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerRunClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GcsInfoCatchServiceDocker_ServiceDesc.Streams[0], "/proto.GcsInfoCatchServiceDocker/DockerContainerRun", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &gcsInfoCatchServiceDockerDockerContainerImagePullClient{stream}
+	x := &gcsInfoCatchServiceDockerDockerContainerRunClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -55,17 +56,17 @@ func (c *gcsInfoCatchServiceDockerClient) DockerContainerImagePull(ctx context.C
 	return x, nil
 }
 
-type GcsInfoCatchServiceDocker_DockerContainerImagePullClient interface {
-	Recv() (*ImagePullRespondMsg, error)
+type GcsInfoCatchServiceDocker_DockerContainerRunClient interface {
+	Recv() (*ContainerRunRespondMsg, error)
 	grpc.ClientStream
 }
 
-type gcsInfoCatchServiceDockerDockerContainerImagePullClient struct {
+type gcsInfoCatchServiceDockerDockerContainerRunClient struct {
 	grpc.ClientStream
 }
 
-func (x *gcsInfoCatchServiceDockerDockerContainerImagePullClient) Recv() (*ImagePullRespondMsg, error) {
-	m := new(ImagePullRespondMsg)
+func (x *gcsInfoCatchServiceDockerDockerContainerRunClient) Recv() (*ContainerRunRespondMsg, error) {
+	m := new(ContainerRunRespondMsg)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -168,40 +169,8 @@ func (x *gcsInfoCatchServiceDockerDockerContainerLogsClient) Recv() (*LogsRespon
 	return m, nil
 }
 
-func (c *gcsInfoCatchServiceDockerClient) DockerContainerStart(ctx context.Context, in *StartRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerStartClient, error) {
-	stream, err := c.cc.NewStream(ctx, &GcsInfoCatchServiceDocker_ServiceDesc.Streams[4], "/proto.GcsInfoCatchServiceDocker/DockerContainerStart", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &gcsInfoCatchServiceDockerDockerContainerStartClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type GcsInfoCatchServiceDocker_DockerContainerStartClient interface {
-	Recv() (*StartRespondMsg, error)
-	grpc.ClientStream
-}
-
-type gcsInfoCatchServiceDockerDockerContainerStartClient struct {
-	grpc.ClientStream
-}
-
-func (x *gcsInfoCatchServiceDockerDockerContainerStartClient) Recv() (*StartRespondMsg, error) {
-	m := new(StartRespondMsg)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *gcsInfoCatchServiceDockerClient) NvmlUtilizationRate(ctx context.Context, in *NvmlInfoReuqestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_NvmlUtilizationRateClient, error) {
-	stream, err := c.cc.NewStream(ctx, &GcsInfoCatchServiceDocker_ServiceDesc.Streams[5], "/proto.GcsInfoCatchServiceDocker/NvmlUtilizationRate", opts...)
+	stream, err := c.cc.NewStream(ctx, &GcsInfoCatchServiceDocker_ServiceDesc.Streams[4], "/proto.GcsInfoCatchServiceDocker/NvmlUtilizationRate", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -237,11 +206,12 @@ func (x *gcsInfoCatchServiceDockerNvmlUtilizationRateClient) Recv() (*NvmlInfoRe
 // for forward compatibility
 type GcsInfoCatchServiceDockerServer interface {
 	// 定义docker操作方法
-	DockerContainerImagePull(*ImagePullRequestMsg, GcsInfoCatchServiceDocker_DockerContainerImagePullServer) error
+	// 包括了image pull以及container create
+	DockerContainerRun(*ContainerRunRequestMsg, GcsInfoCatchServiceDocker_DockerContainerRunServer) error
+	// rpc DockerContainerImagePull (ImagePullRequestMsg) returns (stream ImagePullRespondMsg) {}
 	DockerContainerDelete(*DeleteRequestMsg, GcsInfoCatchServiceDocker_DockerContainerDeleteServer) error
 	DockerContainerStatus(*StatusRequestMsg, GcsInfoCatchServiceDocker_DockerContainerStatusServer) error
 	DockerContainerLogs(*LogsRequestMsg, GcsInfoCatchServiceDocker_DockerContainerLogsServer) error
-	DockerContainerStart(*StartRequestMsg, GcsInfoCatchServiceDocker_DockerContainerStartServer) error
 	// 定义nvml操作方法
 	NvmlUtilizationRate(*NvmlInfoReuqestMsg, GcsInfoCatchServiceDocker_NvmlUtilizationRateServer) error
 }
@@ -250,8 +220,8 @@ type GcsInfoCatchServiceDockerServer interface {
 type UnimplementedGcsInfoCatchServiceDockerServer struct {
 }
 
-func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerImagePull(*ImagePullRequestMsg, GcsInfoCatchServiceDocker_DockerContainerImagePullServer) error {
-	return status.Errorf(codes.Unimplemented, "method DockerContainerImagePull not implemented")
+func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerRun(*ContainerRunRequestMsg, GcsInfoCatchServiceDocker_DockerContainerRunServer) error {
+	return status.Errorf(codes.Unimplemented, "method DockerContainerRun not implemented")
 }
 func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerDelete(*DeleteRequestMsg, GcsInfoCatchServiceDocker_DockerContainerDeleteServer) error {
 	return status.Errorf(codes.Unimplemented, "method DockerContainerDelete not implemented")
@@ -261,9 +231,6 @@ func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerStatus(*Statu
 }
 func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerLogs(*LogsRequestMsg, GcsInfoCatchServiceDocker_DockerContainerLogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method DockerContainerLogs not implemented")
-}
-func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerStart(*StartRequestMsg, GcsInfoCatchServiceDocker_DockerContainerStartServer) error {
-	return status.Errorf(codes.Unimplemented, "method DockerContainerStart not implemented")
 }
 func (UnimplementedGcsInfoCatchServiceDockerServer) NvmlUtilizationRate(*NvmlInfoReuqestMsg, GcsInfoCatchServiceDocker_NvmlUtilizationRateServer) error {
 	return status.Errorf(codes.Unimplemented, "method NvmlUtilizationRate not implemented")
@@ -280,24 +247,24 @@ func RegisterGcsInfoCatchServiceDockerServer(s grpc.ServiceRegistrar, srv GcsInf
 	s.RegisterService(&GcsInfoCatchServiceDocker_ServiceDesc, srv)
 }
 
-func _GcsInfoCatchServiceDocker_DockerContainerImagePull_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ImagePullRequestMsg)
+func _GcsInfoCatchServiceDocker_DockerContainerRun_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ContainerRunRequestMsg)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(GcsInfoCatchServiceDockerServer).DockerContainerImagePull(m, &gcsInfoCatchServiceDockerDockerContainerImagePullServer{stream})
+	return srv.(GcsInfoCatchServiceDockerServer).DockerContainerRun(m, &gcsInfoCatchServiceDockerDockerContainerRunServer{stream})
 }
 
-type GcsInfoCatchServiceDocker_DockerContainerImagePullServer interface {
-	Send(*ImagePullRespondMsg) error
+type GcsInfoCatchServiceDocker_DockerContainerRunServer interface {
+	Send(*ContainerRunRespondMsg) error
 	grpc.ServerStream
 }
 
-type gcsInfoCatchServiceDockerDockerContainerImagePullServer struct {
+type gcsInfoCatchServiceDockerDockerContainerRunServer struct {
 	grpc.ServerStream
 }
 
-func (x *gcsInfoCatchServiceDockerDockerContainerImagePullServer) Send(m *ImagePullRespondMsg) error {
+func (x *gcsInfoCatchServiceDockerDockerContainerRunServer) Send(m *ContainerRunRespondMsg) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -364,27 +331,6 @@ func (x *gcsInfoCatchServiceDockerDockerContainerLogsServer) Send(m *LogsRespond
 	return x.ServerStream.SendMsg(m)
 }
 
-func _GcsInfoCatchServiceDocker_DockerContainerStart_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(StartRequestMsg)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(GcsInfoCatchServiceDockerServer).DockerContainerStart(m, &gcsInfoCatchServiceDockerDockerContainerStartServer{stream})
-}
-
-type GcsInfoCatchServiceDocker_DockerContainerStartServer interface {
-	Send(*StartRespondMsg) error
-	grpc.ServerStream
-}
-
-type gcsInfoCatchServiceDockerDockerContainerStartServer struct {
-	grpc.ServerStream
-}
-
-func (x *gcsInfoCatchServiceDockerDockerContainerStartServer) Send(m *StartRespondMsg) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 func _GcsInfoCatchServiceDocker_NvmlUtilizationRate_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(NvmlInfoReuqestMsg)
 	if err := stream.RecvMsg(m); err != nil {
@@ -415,8 +361,8 @@ var GcsInfoCatchServiceDocker_ServiceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "DockerContainerImagePull",
-			Handler:       _GcsInfoCatchServiceDocker_DockerContainerImagePull_Handler,
+			StreamName:    "DockerContainerRun",
+			Handler:       _GcsInfoCatchServiceDocker_DockerContainerRun_Handler,
 			ServerStreams: true,
 		},
 		{
@@ -432,11 +378,6 @@ var GcsInfoCatchServiceDocker_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "DockerContainerLogs",
 			Handler:       _GcsInfoCatchServiceDocker_DockerContainerLogs_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "DockerContainerStart",
-			Handler:       _GcsInfoCatchServiceDocker_DockerContainerStart_Handler,
 			ServerStreams: true,
 		},
 		{
