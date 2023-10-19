@@ -19,7 +19,12 @@ import (
 func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 	stream pb.GcsInfoCatchServiceDocker_DockerContainerRunServer) error {
 
-	log.Printf("docker container run:[%v][%v][%v]\n", req.GetContainerName(), req.GetGpuIdx(), req.GetImageName())
+	log.Printf("docker container run:[%v][%v][%v][%v][%v]\n",
+		req.GetContainerName(),
+		req.GetGpuIdx(),
+		req.GetImageName(),
+		req.GetMaster(),
+		req.GetParamaters())
 
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -49,10 +54,10 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 	out, err = cli.ImagePull(ctx, req.GetImageName(), types.ImagePullOptions{RegistryAuth: authStr})
 	if err != nil {
 		log.Printf("cli.ImagePull Error:", err.Error())
-		err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "IMAGE_ERROR"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err.Error())
-			return err
+		err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "IMAGE_ERROR"})
+		if err_stream != nil {
+			log.Printf("Stream send error:%v", err_stream.Error())
+			return err_stream
 		}
 		return err
 	}
@@ -65,24 +70,23 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 				return err
 			}
 			// EOF
-			log.Println("out.Read EOF occurred")
-			out.Close()
+			log.Println("image pull EOF")
 			break
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second) // 每 3 秒获取一次
 		log.Printf("%v\n", string(buf[:n]))
-		err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "IMAGE_PULLING"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
+		err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "IMAGE_PULLING"})
+		if err_stream != nil {
+			log.Printf("Stream send error:%v", err_stream.Error())
+			return err_stream
 		}
 	}
 
 	//开始创建容器
-	err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_CREATING"})
-	if err != nil {
-		log.Printf("Stream send error:%v", err)
-		return err
+	err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_CREATING"})
+	if err_stream != nil {
+		log.Printf("Stream send error:%v", err_stream.Error())
+		return err_stream
 	}
 	log.Println("container create start")
 	exposedPorts := nat.PortSet{nat.Port("22/tcp"): {}}
@@ -90,6 +94,7 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		HostIP:   "",
 		HostPort: "50022",
 	}}
+	portMaps := nat.PortMap{nat.Port("22/tcp"): portBindings}
 
 	capabilities := [][]string{{"gpu"}}
 	var deviceIDs []string
@@ -107,21 +112,29 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		Target:   "/storage-root",
 		ReadOnly: false,
 	}
+	var entryPoint []string
 
-	portMaps := nat.PortMap{nat.Port("22/tcp"): portBindings}
+	if req.GetMaster() {
+		//是 master 执行多的命令
+		entryPoint = []string{"/root/miniconda3/bin/python", "/storage-root/script/start_tmp.py " + req.GetParamaters()}
+	} else {
+		entryPoint = []string{"/bin/bash", "-c", "tail -f /dev/null"}
+	}
+
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		User:         "root",
+		Tty:          true,
 		ExposedPorts: exposedPorts,
 		Env:          nil,
 		Image:        req.GetImageName(),
-		Entrypoint:   []string{"/bin/bash", "-c", "tail -f /dev/null"},
+		Entrypoint:   entryPoint,
 	}, &container.HostConfig{
-		Binds:           nil,
-		LogConfig:       container.LogConfig{},
-		NetworkMode:     "",
-		PortBindings:    portMaps,
-		RestartPolicy:   container.RestartPolicy{},
-		AutoRemove:      true,
+		Binds:         nil,
+		LogConfig:     container.LogConfig{},
+		NetworkMode:   "",
+		PortBindings:  portMaps,
+		RestartPolicy: container.RestartPolicy{},
+		//AutoRemove:      true,
 		IpcMode:         container.IPCModeHost,
 		Privileged:      false,
 		PublishAllPorts: false,
@@ -137,6 +150,11 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		return err
 	}
 	log.Println("container started")
+	err_stream = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_CREATED"})
+	if err_stream != nil {
+		log.Printf("Stream send error:%v", err_stream.Error())
+		return err_stream
+	}
 
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for {
@@ -147,63 +165,33 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 				log.Printf("containerStatus get error:%v\n", err.Error())
 				return err
 			}
+			//说明containerInspect 发生了错误，大概率是没有这个 container
 			if status == "" {
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_REMOVED"})
-				if err != nil {
-					log.Printf("Stream send error:%v", err)
+				err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_REMOVED"})
+				if err_stream != nil {
+					log.Printf("Stream send error:%v", err_stream.Error())
+					return err_stream
 				}
-				log.Printf("containerID not found\n")
-				return err
-			}
-			if status == "running" {
-				ci, err := cli.ContainerInspect(ctx, resp.ID)
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_RUNNING", ContainerIp: ci.NetworkSettings.IPAddress})
-				if err != nil {
-					log.Printf("Stream send error:%v", err)
+				log.Printf("container [%v] removed\n", req.GetContainerName())
+				return nil
+			} else if status == "running" {
+				ci, _ := cli.ContainerInspect(ctx, resp.ID)
+				err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_RUNNING", ContainerIp: ci.NetworkSettings.IPAddress})
+				if err_stream != nil {
+					log.Printf("Stream send error:%v", err_stream.Error())
+					return err_stream
 				}
 				log.Printf("container running:%v\n", resp.ID)
-				return err
+				return nil
 
-			}
-			if status == "created" {
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_CREATED"})
-				if err != nil {
-					log.Printf("Stream send error:%v", err)
+			} else {
+				err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_UNKNOWN"})
+				if err_stream != nil {
+					log.Printf("Stream send error:%v", err_stream.Error())
+					return err_stream
 				}
-				log.Printf("container created:%v\n", resp.ID)
-				return err
-			}
-			if status == "exited" {
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_EXITED"})
-				if err != nil {
-					log.Printf("Stream send error:%v", err)
-				}
-				log.Printf("container exited:%v\n", resp.ID)
-				return err
-			}
-			if status == "dead" {
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_DEAD"})
-				if err != nil {
-					log.Printf("Stream send error:%v", err)
-				}
-				log.Printf("container dead:%v\n", resp.ID)
-				return err
-			}
-			if status == "removing" {
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_REMOVING"})
-				if err != nil {
-					log.Printf("Stream send error:%v", err)
-				}
-				log.Printf("container removing:%v\n", resp.ID)
-				return err
-			}
-			if status == "restarting" {
-				err = stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_RESTARTING"})
-				if err != nil {
-					log.Printf("Stream send error:%v", err)
-				}
-				log.Printf("container restarting:%v\n", resp.ID)
-				return err
+				log.Printf("container running:%v\n", resp.ID)
+				return nil
 			}
 		}
 	}
@@ -249,66 +237,37 @@ func (g *GCSInfoCatchServer) DockerContainerStatus(req *pb.StatusRequestMsg, str
 		return err
 	}
 
-	inspect, err := cli.ContainerInspect(ctx, req.GetContainerName())
-	if err != nil {
-		log.Printf("ContainerInspect get error:%v\n", err.Error())
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_REMOVED"})
-		return err
-	}
-	status := inspect.State.Status
+	status, err := containerStatus(cli, ctx, req.GetContainerName())
 	if err != nil {
 		log.Printf("containerStatus get error:%v\n", err.Error())
 		return err
 	}
-	if status == "running" {
+	//说明containerInspect 发生了错误，大概率是没有这个 container
+	if status == "" {
+		err_stream := stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_REMOVED"})
+		if err_stream != nil {
+			log.Printf("Stream send error:%v", err_stream.Error())
+			return err_stream
+		}
+		log.Printf("container [%v] removed\n", req.GetContainerName())
+		return nil
+	} else if status == "running" {
+		err_stream := stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_RUNNING"})
+		if err_stream != nil {
+			log.Printf("Stream send error:%v", err_stream.Error())
+			return err_stream
+		}
 		log.Printf("container running:%v\n", req.GetContainerName())
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_RUNNING"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
+		return nil
+	} else {
+		err_stream := stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_UNKNOWN"})
+		if err_stream != nil {
+			log.Printf("Stream send error:%v", err_stream.Error())
+			return err_stream
 		}
+		log.Printf("container running:%v\n", req.GetContainerName())
+		return nil
 	}
-	if status == "created" {
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_CREATED"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
-		}
-		log.Printf("container created:%v\n", req.GetContainerName())
-	}
-	if status == "exited" {
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_EXITED"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
-		}
-		log.Printf("container exited:%v\n", req.GetContainerName())
-	}
-	if status == "dead" {
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_DEAD"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
-		}
-		log.Printf("container dead:%v\n", req.GetContainerName())
-	}
-	if status == "removing" {
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_REMOVING"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
-		}
-		log.Printf("container removing:%v\n", req.GetContainerName())
-	}
-	if status == "restarting" {
-		err = stream.Send(&pb.StatusRespondMsg{StatusResp: "CONTAINER_RESTARTING"})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
-		}
-		log.Printf("container restarting:%v\n", req.GetContainerName())
-	}
-	return nil
 }
 
 func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream pb.GcsInfoCatchServiceDocker_DockerContainerLogsServer) error {
@@ -322,30 +281,25 @@ func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream 
 	}
 	defer cli.Close()
 	var out io.ReadCloser
-	defer out.Close()
 	// 创建一个缓冲区来保存数据
 	buf := make([]byte, 4096)
-	for {
-		out, err := cli.ContainerLogs(ctx, req.GetContainerName(), types.ContainerLogsOptions{
-			ShowStdout: false,
-			ShowStderr: false,
-			Since:      "",
-			Until:      "",
-			Timestamps: false,
-			Follow:     true,
-			Tail:       "",
-			Details:    false,
-		})
-		if err != nil {
-			log.Printf("cli.ContainerLogs Error:", err.Error())
-			err = stream.Send(&pb.LogsRespondMsg{LogsResp: "LOGS_ERROR"})
-			if err != nil {
-				log.Printf("Stream send error:%v", err.Error())
-				return err
-			}
-			return err
-		}
 
+	out, err = cli.ContainerLogs(ctx, req.GetContainerName(), types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Timestamps: false,
+		Follow:     true,
+	})
+	if err != nil {
+		log.Printf("cli.ContainerLogs Error:", err.Error())
+		err_stream := stream.Send(&pb.LogsRespondMsg{LogsResp: "LOGS_ERROR"})
+		if err_stream != nil {
+			log.Printf("Stream send error:%v", err_stream.Error())
+			return err_stream
+		}
+		return err
+	}
+	for {
 		n, err := out.Read(buf)
 		if err != nil {
 			if err != io.EOF {
@@ -353,14 +307,14 @@ func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream 
 				return err
 			}
 			// EOF
-			log.Println("out.Read EOF occurred")
+			log.Println("Get log EOF")
 			break
 		}
-		log.Printf("%v\n", buf[:n])
-		err = stream.Send(&pb.LogsRespondMsg{LogsResp: string(buf[:n])})
-		if err != nil {
-			log.Printf("Stream send error:%v", err)
-			return err
+		log.Printf("%v", string(buf[:n]))
+		err_stream := stream.Send(&pb.LogsRespondMsg{LogsResp: string(buf[:n])})
+		if err_stream != nil {
+			log.Printf("Stream send error:%v", err_stream.Error())
+			return err_stream
 		}
 	}
 	return nil

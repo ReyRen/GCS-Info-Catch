@@ -21,10 +21,13 @@ service GcsInfoCatchServiceDocker {
 }
 
 /***************************Docker Message******************************/
+
 message ContainerRunRequestMsg {
   string imageName = 1;
   string containerName = 2;
   string gpuIdx = 3;
+  bool master = 4;
+  string paramaters = 5;
 }
 
 message ContainerRunRespondMsg {
