@@ -15,12 +15,22 @@ service GcsInfoCatchServiceDocker {
   rpc DockerContainerStatus (StatusRequestMsg) returns (stream StatusRespondMsg) {}
   rpc DockerContainerLogs (LogsRequestMsg) returns (stream LogsRespondMsg) {}
 
+  rpc DockerLogStor(DockerLogStorReqMsg) returns (DockerLogStorRespMsg) {}
+
 
   // 定义nvml操作方法
   rpc NvmlUtilizationRate (NvmlInfoReuqestMsg) returns (stream NvmlInfoRespondMsg) {}
 }
 
 /***************************Docker Message******************************/
+
+message DockerLogStorReqMsg {
+  string logFilePath = 1;
+  string containerName = 2;
+}
+message DockerLogStorRespMsg {
+  string logStorResp = 1;
+}
 
 message ContainerRunRequestMsg {
   string imageName = 1;

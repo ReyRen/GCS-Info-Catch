@@ -74,8 +74,10 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 			occupied = append(occupied, 99999)
 			continue
 		}
-		if process != nil {
+		if len(process) > 0 {
 			occupied = append(occupied, 1) // 1表示占用了
+		} else {
+			occupied = append(occupied, 0) //表示未占用
 		}
 	}
 	log.Printf("GPUIndex get %v\n", indexID)

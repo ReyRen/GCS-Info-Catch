@@ -28,6 +28,7 @@ type GcsInfoCatchServiceDockerClient interface {
 	DockerContainerDelete(ctx context.Context, in *DeleteRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerDeleteClient, error)
 	DockerContainerStatus(ctx context.Context, in *StatusRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerStatusClient, error)
 	DockerContainerLogs(ctx context.Context, in *LogsRequestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_DockerContainerLogsClient, error)
+	DockerLogStor(ctx context.Context, in *DockerLogStorReqMsg, opts ...grpc.CallOption) (*DockerLogStorRespMsg, error)
 	// 定义nvml操作方法
 	NvmlUtilizationRate(ctx context.Context, in *NvmlInfoReuqestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_NvmlUtilizationRateClient, error)
 }
@@ -168,6 +169,15 @@ func (x *gcsInfoCatchServiceDockerDockerContainerLogsClient) Recv() (*LogsRespon
 	return m, nil
 }
 
+func (c *gcsInfoCatchServiceDockerClient) DockerLogStor(ctx context.Context, in *DockerLogStorReqMsg, opts ...grpc.CallOption) (*DockerLogStorRespMsg, error) {
+	out := new(DockerLogStorRespMsg)
+	err := c.cc.Invoke(ctx, "/proto.GcsInfoCatchServiceDocker/DockerLogStor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *gcsInfoCatchServiceDockerClient) NvmlUtilizationRate(ctx context.Context, in *NvmlInfoReuqestMsg, opts ...grpc.CallOption) (GcsInfoCatchServiceDocker_NvmlUtilizationRateClient, error) {
 	stream, err := c.cc.NewStream(ctx, &GcsInfoCatchServiceDocker_ServiceDesc.Streams[4], "/proto.GcsInfoCatchServiceDocker/NvmlUtilizationRate", opts...)
 	if err != nil {
@@ -210,6 +220,7 @@ type GcsInfoCatchServiceDockerServer interface {
 	DockerContainerDelete(*DeleteRequestMsg, GcsInfoCatchServiceDocker_DockerContainerDeleteServer) error
 	DockerContainerStatus(*StatusRequestMsg, GcsInfoCatchServiceDocker_DockerContainerStatusServer) error
 	DockerContainerLogs(*LogsRequestMsg, GcsInfoCatchServiceDocker_DockerContainerLogsServer) error
+	DockerLogStor(context.Context, *DockerLogStorReqMsg) (*DockerLogStorRespMsg, error)
 	// 定义nvml操作方法
 	NvmlUtilizationRate(*NvmlInfoReuqestMsg, GcsInfoCatchServiceDocker_NvmlUtilizationRateServer) error
 }
@@ -229,6 +240,9 @@ func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerStatus(*Statu
 }
 func (UnimplementedGcsInfoCatchServiceDockerServer) DockerContainerLogs(*LogsRequestMsg, GcsInfoCatchServiceDocker_DockerContainerLogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method DockerContainerLogs not implemented")
+}
+func (UnimplementedGcsInfoCatchServiceDockerServer) DockerLogStor(context.Context, *DockerLogStorReqMsg) (*DockerLogStorRespMsg, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DockerLogStor not implemented")
 }
 func (UnimplementedGcsInfoCatchServiceDockerServer) NvmlUtilizationRate(*NvmlInfoReuqestMsg, GcsInfoCatchServiceDocker_NvmlUtilizationRateServer) error {
 	return status.Errorf(codes.Unimplemented, "method NvmlUtilizationRate not implemented")
@@ -329,6 +343,24 @@ func (x *gcsInfoCatchServiceDockerDockerContainerLogsServer) Send(m *LogsRespond
 	return x.ServerStream.SendMsg(m)
 }
 
+func _GcsInfoCatchServiceDocker_DockerLogStor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DockerLogStorReqMsg)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GcsInfoCatchServiceDockerServer).DockerLogStor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.GcsInfoCatchServiceDocker/DockerLogStor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GcsInfoCatchServiceDockerServer).DockerLogStor(ctx, req.(*DockerLogStorReqMsg))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _GcsInfoCatchServiceDocker_NvmlUtilizationRate_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(NvmlInfoReuqestMsg)
 	if err := stream.RecvMsg(m); err != nil {
@@ -356,7 +388,12 @@ func (x *gcsInfoCatchServiceDockerNvmlUtilizationRateServer) Send(m *NvmlInfoRes
 var GcsInfoCatchServiceDocker_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.GcsInfoCatchServiceDocker",
 	HandlerType: (*GcsInfoCatchServiceDockerServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "DockerLogStor",
+			Handler:    _GcsInfoCatchServiceDocker_DockerLogStor_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "DockerContainerRun",
