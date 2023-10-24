@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"io"
@@ -117,11 +118,14 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 
 	if req.GetMaster() {
 		//是 master 执行多的命令
-		entryPoint = []string{"/root/miniconda3/bin/python", "/storage-root/script/start_tmp.py", req.GetParamaters()}
+		entryPoint = []string{"/root/miniconda3/bin/python", "/storage-root/script/start.py", req.GetParamaters()}
 	} else {
 		entryPoint = []string{"/bin/bash", "-c", "tail -f /dev/null"}
 	}
-
+	m := make(map[string]*network.EndpointSettings)
+	m["myNet"] = &network.EndpointSettings{
+		NetworkID: MY_OVERLAY_NETWORK,
+	}
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		User: "root",
 		Tty:  true,
@@ -130,9 +134,8 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		Image:      req.GetImageName(),
 		Entrypoint: entryPoint,
 	}, &container.HostConfig{
-		Binds:       nil,
-		LogConfig:   container.LogConfig{},
-		NetworkMode: "",
+		Binds:     nil,
+		LogConfig: container.LogConfig{},
 		//PortBindings:  portMaps,
 		RestartPolicy: container.RestartPolicy{},
 		//AutoRemove:      true,
@@ -144,7 +147,7 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 			DeviceRequests: deviceRequest,
 		},
 		Mounts: append(mountVolume, mountData),
-	}, nil, nil, req.GetContainerName())
+	}, &network.NetworkingConfig{m}, nil, req.GetContainerName())
 
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		log.Printf("container start error:%v\n", err.Error())
@@ -177,21 +180,20 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 				return nil
 			} else if status == "running" {
 				ci, _ := cli.ContainerInspect(ctx, resp.ID)
-				err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_RUNNING", ContainerIp: ci.NetworkSettings.IPAddress})
+				err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_RUNNING", ContainerIp: ci.NetworkSettings.Networks[MY_OVERLAY_NETWORK].IPAddress})
 				if err_stream != nil {
 					log.Printf("Stream send error:%v", err_stream.Error())
 					return err_stream
 				}
 				log.Printf("container running:%v\n", resp.ID)
 				return nil
-
 			} else {
 				err_stream := stream.Send(&pb.ContainerRunRespondMsg{RunResp: "CONTAINER_UNKNOWN"})
 				if err_stream != nil {
 					log.Printf("Stream send error:%v", err_stream.Error())
 					return err_stream
 				}
-				log.Printf("container running:%v\n", resp.ID)
+				log.Printf("container unknown:%v\n", resp.ID)
 				return nil
 			}
 		}
