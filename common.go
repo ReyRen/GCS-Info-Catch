@@ -13,6 +13,15 @@ var (
 
 	//创建的 docker swarm 的 overlay 网络名字
 	MY_OVERLAY_NETWORK = "my-attachable-overlay"
+
+	//映射存储
+	SOURCE_ALL      = "/storage-ftp-data"
+	TARGET_ALL      = "/storage-root"
+	SOURCE_DATASETS = "/storage-ftp-data/datasets"
+	TARGET_DATASETS = "/storage-root/datasets"
+
+	//entrypoint
+	startScript = "/storage-root/script/start.py"
 )
 
 // GCSInfoCatchServer is rpc server obj
