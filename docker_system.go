@@ -118,7 +118,7 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 
 	if req.GetMaster() {
 		//是 master 执行多的命令
-		entryPoint = []string{"/root/miniconda3/bin/python", "/storage-root/script/start.py", req.GetParamaters()}
+		entryPoint = []string{"python", "/storage-root/script/start.py", req.GetParamaters()}
 	} else {
 		entryPoint = []string{"/bin/bash", "-c", "tail -f /dev/null"}
 	}
@@ -130,9 +130,9 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		User: "root",
 		Tty:  true,
 		//ExposedPorts: exposedPorts,
-		Env:        nil,
 		Image:      req.GetImageName(),
 		Entrypoint: entryPoint,
+		Shell:      []string{"/bin/bash"},
 	}, &container.HostConfig{
 		Binds:     nil,
 		LogConfig: container.LogConfig{},
