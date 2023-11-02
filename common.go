@@ -13,6 +13,8 @@ var (
 
 	//创建的 docker swarm 的 overlay 网络名字
 	MY_OVERLAY_NETWORK = "my-attachable-overlay"
+	//创建的 infiniband device
+	MY_DEVICE_INFINIBAND = "/dev/infiniband"
 
 	//映射存储
 	SOURCE_ALL      = "/storage-ftp-data"
@@ -21,7 +23,7 @@ var (
 	TARGET_DATASETS = "/storage-root/datasets"
 
 	//entrypoint
-	startScript = "/storage-root/script/start.py"
+	startScript = "/storage-root/script/start1.sh"
 )
 
 // GCSInfoCatchServer is rpc server obj

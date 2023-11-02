@@ -125,9 +125,9 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 
 	if req.GetMaster() {
 		//是 master 执行多的命令
-		entryPoint = []string{"python", startScript, req.GetParamaters()}
+		entryPoint = []string{"/bin/bash", startScript, req.GetParamaters()}
 	} else {
-		entryPoint = []string{"/bin/bash", "-c", "tail -f /dev/null"}
+		entryPoint = []string{"/bin/bash", "-c", "service ssh start;tail -f /dev/null"}
 	}
 	m := make(map[string]*network.EndpointSettings)
 	m["myNet"] = &network.EndpointSettings{
@@ -151,6 +151,10 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		PublishAllPorts: false,
 		ShmSize:         512,
 		Resources: container.Resources{
+			Devices: []container.DeviceMapping{{
+				MY_DEVICE_INFINIBAND,
+				MY_DEVICE_INFINIBAND,
+				"rmw"}},
 			DeviceRequests: deviceRequest,
 		},
 		Mounts: append(mountVolume, mountAll),
@@ -379,7 +383,7 @@ func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream 
 			log.Println("Get log EOF")
 			break
 		}
-		log.Printf("%v", string(buf[:n]))
+		//log.Printf("%v", string(buf[:n]))
 		err_stream := stream.Send(&pb.LogsRespondMsg{LogsResp: string(buf[:n])})
 		if err_stream != nil {
 			log.Printf("Stream send error:%v", err_stream.Error())
