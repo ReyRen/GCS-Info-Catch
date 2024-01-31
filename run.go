@@ -10,7 +10,12 @@ import (
 
 func run_handler_server() {
 
-	lis, err := net.Listen("tcp", RPC_ADDDR_AND_PORT)
+	addr, err := getLocalIpAddress(RPC_INTERFACE_NAME)
+	if err != nil {
+		log.Printf("Failed  getLocalIpAddress: %v\n", err.Error())
+	}
+
+	lis, err := net.Listen("tcp", addr+":50001")
 	if err != nil {
 		log.Printf("Failed to listen: %v\n", err.Error())
 	}

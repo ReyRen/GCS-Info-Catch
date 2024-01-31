@@ -125,6 +125,7 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 
 	if req.GetMaster() {
 		//是 master 执行多的命令
+		//entryPoint = []string{"python", startScript, req.GetParamaters()}
 		entryPoint = []string{"/bin/bash", startScript, req.GetParamaters()}
 	} else {
 		entryPoint = []string{"/bin/bash", "-c", "service ssh start;tail -f /dev/null"}
@@ -137,6 +138,7 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		User: "root",
 		Tty:  true,
 		//ExposedPorts: exposedPorts,
+		//Cmd:        []string{req.GetParamaters()},
 		Image:      req.GetImageName(),
 		Entrypoint: entryPoint,
 		Shell:      []string{"/bin/bash", "-c"},
@@ -146,16 +148,15 @@ func (g *GCSInfoCatchServer) DockerContainerRun(req *pb.ContainerRunRequestMsg,
 		//PortBindings:  portMaps,
 		RestartPolicy: container.RestartPolicy{},
 		//AutoRemove:      true,
-		IpcMode:         container.IPCModeHost,
-		CapAdd:          []string{"CAP_IPC_LOCK"},
+		IpcMode: container.IPCModeHost,
+		CapAdd: []string{
+			//"CAP_IPC_OWNER",
+			"CAP_IPC_LOCK"},
 		Privileged:      false,
 		PublishAllPorts: false,
-		ShmSize:         512,
+		ShmSize:         214748364800,
 		Resources: container.Resources{
-			Devices: []container.DeviceMapping{{
-				MY_DEVICE_INFINIBAND,
-				MY_DEVICE_INFINIBAND,
-				"rmw"}},
+			Devices:        []container.DeviceMapping{{"/dev/infiniband", "/dev/infiniband", "rwm"}},
 			DeviceRequests: deviceRequest,
 		},
 		Mounts: append(mountVolume, mountAll),
@@ -384,7 +385,7 @@ func (g *GCSInfoCatchServer) DockerContainerLogs(req *pb.LogsRequestMsg, stream 
 			log.Println("Get log EOF")
 			break
 		}
-		//log.Printf("%v", string(buf[:n]))
+		log.Printf("%v", string(buf[:n]))
 		err_stream := stream.Send(&pb.LogsRespondMsg{LogsResp: string(buf[:n])})
 		if err_stream != nil {
 			log.Printf("Stream send error:%v", err_stream.Error())
