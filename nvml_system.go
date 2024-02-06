@@ -32,7 +32,7 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 
 	var indexID []int32
 	var utilizationRate []uint32
-	var memRate []uint32
+	var memRate []uint64
 	var temperature []uint32
 	var occupied []uint32
 
@@ -54,11 +54,16 @@ func (g *GCSInfoCatchServer) NvmlUtilizationRate(req *pb.NvmlInfoReuqestMsg, str
 		if ret != nvml.SUCCESS {
 			log.Printf("Unable to get device GetUtilizationRates at index:%v\n", nvml.ErrorString(ret))
 			utilizationRate = append(utilizationRate, 99999)
-			memRate = append(memRate, 99999)
 			continue
 		}
 		utilizationRate = append(utilizationRate, rate.Gpu)
-		memRate = append(memRate, rate.Memory)
+		memUsed, ret := device.GetMemoryInfo()
+		if ret != nvml.SUCCESS {
+			log.Printf("Unable to get device memory used at index:%v\n", nvml.ErrorString(ret))
+			memRate = append(memRate, 99999)
+			continue
+		}
+		memRate = append(memRate, memUsed.Used*100/memUsed.Total)
 		//GPU 温度加入
 		temp, ret := device.GetTemperature(nvml.TemperatureSensors(0))
 		if ret != nvml.SUCCESS {

@@ -73,7 +73,7 @@ message NvmlInfoReuqestMsg{
 message NvmlInfoRespondMsg{
   repeated int32 indexID = 1;
   repeated uint32 utilizationRate = 2;
-  repeated uint32 memRate = 3;
+  repeated uint64 memRate = 3;
   repeated uint32 temperature = 4;
   repeated uint32 occupied = 5; //通过 runningprocess 有无来进行判断
 }
